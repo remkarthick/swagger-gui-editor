@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swagger Studio</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist/swagger-ui.css" />
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="spec-browser" id="spec-browser">
+            <div class="spec-browser-header">
+                <div>
+                    <div class="brand-title">Neo Swagger Studio</div>
+                    <div class="brand-subtitle">Search and manage stored specs</div>
+                </div>
+            </div>
+
+            <div class="spec-browser-search">
+                <input type="text" id="spec-search" placeholder="Search specs by name...">
+            </div>
+
+            <div class="spec-list" id="spec-list"></div>
+        </aside>
+
+        <main class="main-area">
+            <div class="topbar">
+                <div class="toolbar-row toolbar-row-1">
+                    <div class="toolbar-group">
+                        <button class="ghost-btn" onclick="togglePanel('spec-browser')">Specs</button>
+                        <button class="ghost-btn" onclick="togglePanel('left-panel')">GUI</button>
+                        <button class="ghost-btn" onclick="togglePanel('middle-panel')">Editor</button>
+                        <button class="ghost-btn" onclick="togglePanel('right-panel')">Preview</button>
+                    </div>
+
+                    <div class="toolbar-group">
+                        <button class="ghost-btn" onclick="toggleTheme()" id="theme-toggle-btn">Light Mode</button>
+                    </div>
+                </div>
+
+                <div class="toolbar-row toolbar-row-2 stored-spec-row">
+                    <div class="stored-spec-label">Stored Spec</div>
+
+                    <div class="toolbar-group spec-name-group">
+                        <input type="hidden" id="current-spec-id">
+                        <input type="text" id="spec-name" placeholder="Stored specification name">
+                    </div>
+
+                    <div class="toolbar-group">
+                        <button onclick="saveAsNewSpec()">Save As New</button>
+                        <button onclick="updateCurrentSpec()">Update Stored</button>
+                        <button class="danger-btn" onclick="deleteCurrentSpec()">Delete Stored</button>
+                    </div>
+
+                    <div class="toolbar-group">
+                        <button class="success-btn" onclick="downloadCurrentYaml()">Download YAML</button>
+                        <button class="success-btn" onclick="downloadCurrentJson()">Download JSON</button>
+                    </div>
+
+                    <div class="toolbar-group">
+                        <div class="view-toggle">
+                            <button id="view-yaml-btn" class="toggle-active" onclick="setEditorMode('yaml')">YAML</button>
+                            <button id="view-json-btn" onclick="setEditorMode('json')">JSON</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="workspace" id="main-container">
+                <section class="panel left-panel" id="left-panel">
+                    <div class="section-card glass-card">
+                        <div class="section-header collapsible-header" onclick="toggleSectionBody(this)">
+                            <span>API Information</span>
+                            <span class="collapse-icon">▼</span>
+                        </div>
+                        <div class="section-body">
+                            <label>Title</label>
+                            <input type="text" id="title">
+
+                            <label>Description</label>
+                            <textarea id="description"></textarea>
+
+                            <label>Version</label>
+                            <input type="text" id="version">
+                        </div>
+                    </div>
+
+                    <div class="section-card glass-card">
+                        <div class="section-header collapsible-header" onclick="toggleSectionBody(this)">
+                            <span>Servers</span>
+                            <span class="collapse-icon">▼</span>
+                        </div>
+                        <div class="section-body">
+                            <div id="servers-container"></div>
+                            <button type="button" onclick="addServer()">+ Add Server</button>
+                        </div>
+                    </div>
+
+                    <div class="section-card glass-card">
+                        <div class="section-header collapsible-header" onclick="toggleSectionBody(this)">
+                            <span>Paths</span>
+                            <span class="collapse-icon">▼</span>
+                        </div>
+                        <div class="section-body">
+                            <div id="paths-container"></div>
+                            <button type="button" onclick="addPath()">+ Add Path</button>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="splitter" id="splitter-left"></div>
+
+                <section class="panel middle-panel" id="middle-panel">
+    <div class="editor-header">
+        <h3>OpenAPI Editor</h3>
+        <div class="editor-meta" id="editor-mode-label">Viewing: YAML</div>
+    </div>
+    <div id="yaml-editor" class="monaco-editor-container"></div>
+</section>
+
+
+                <div class="splitter" id="splitter-right"></div>
+
+                <section class="panel right-panel" id="right-panel">
+                    <div class="editor-header">
+                        <h3>Live Preview</h3>
+                    </div>
+                    <div id="swagger-ui"></div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        window.INITIAL_YAML = {{ initial_yaml|tojson }};
+    </script>
+
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+<script src="https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
