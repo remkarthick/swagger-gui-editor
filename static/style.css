@@ -405,7 +405,9 @@ body.light-theme #yaml-editor {
 }
 
 .server-block,
-.header-block {
+.header-block,
+.example-block,
+.schema-variant-card {
     border: 1px solid var(--border);
     background: var(--panel);
     border-radius: 12px;
@@ -427,6 +429,18 @@ body.light-theme #yaml-editor {
     gap: 8px;
     flex-wrap: wrap;
     margin-bottom: 10px;
+}
+
+.select-row {
+    display: flex;
+    gap: 10px;
+    align-items: end;
+    flex-wrap: wrap;
+}
+
+.select-row > div {
+    flex: 1;
+    min-width: 160px;
 }
 
 .path-card {
@@ -578,8 +592,12 @@ body.light-theme #yaml-editor {
     .spec-name-group {
         min-width: 100%;
     }
-}
 
+    .inline-row,
+    .schema-inline {
+        flex-direction: column;
+    }
+}
 
 .stored-spec-row {
     align-items: center;
@@ -604,4 +622,58 @@ body.light-theme #yaml-editor {
     border-radius: 14px;
     overflow: hidden;
     background: var(--panel);
+}
+
+
+.example-block,
+.schema-variant-card {
+    border: 1px solid var(--border);
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+}
+
+.select-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.select-row > div {
+    flex: 1;
+    min-width: 180px;
+}
+
+
+.example-block,
+.schema-variant-card {
+    border: 1px solid var(--border);
+    background: var(--panel);
+    border-radius: 12px;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.mini-card-header {
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    background: rgba(54, 194, 255, 0.06);
+    border-bottom: 1px solid var(--border);
+}
+
+.mini-card-title {
+    font-weight: 700;
+}
+
+.mini-card-body {
+    padding: 12px;
+}
+
+.mini-card-body.collapsed {
+    display: none;
 }

@@ -260,6 +260,14 @@ function toggleSchemaField(headerEl) {
     icon.textContent = body.classList.contains("collapsed") ? "▶" : "▼";
 }
 
+function toggleMiniCard(headerEl) {
+    const body = headerEl.nextElementSibling;
+    const icon = headerEl.querySelector(".collapse-icon");
+    if (!body || !icon) return;
+    body.classList.toggle("collapsed");
+    icon.textContent = body.classList.contains("collapsed") ? "▶" : "▼";
+}
+
 /* -------------------- Panel Toggle -------------------- */
 
 function togglePanel(panelId) {
@@ -429,105 +437,90 @@ function inferSchemaFromExample(example) {
     return { type: "string" };
 }
 
-function buildRequestSchemaFromExample(pathBlock) {
-    const exampleText = pathBlock.querySelector(".path-request-example")?.value.trim();
-    if (!exampleText) {
-        alert("Please enter request example JSON first.");
-        return;
-    }
+/* -------------------- Example Helpers -------------------- */
 
-    try {
-        const exampleObj = JSON.parse(exampleText);
-        const schema = inferSchemaFromExample(exampleObj);
-        const visualFields = openApiSchemaToVisualFields(schema);
-        createSchemaBuilder(pathBlock.querySelector(".request-schema-builder"), visualFields);
-        triggerGenerateIfAllowed();
-    } catch (e) {
-        console.error(e);
-        alert("Invalid request example JSON.");
-    }
-}
-
-function buildResponseSchemaFromExample(pathBlock) {
-    const exampleText = pathBlock.querySelector(".path-response-example")?.value.trim();
-    if (!exampleText) {
-        alert("Please enter response example JSON first.");
-        return;
-    }
-
-    try {
-        const exampleObj = JSON.parse(exampleText);
-        const schema = inferSchemaFromExample(exampleObj);
-        const visualFields = openApiSchemaToVisualFields(schema);
-        createSchemaBuilder(pathBlock.querySelector(".response-schema-builder"), visualFields);
-        triggerGenerateIfAllowed();
-    } catch (e) {
-        console.error(e);
-        alert("Invalid response example JSON.");
-    }
-}
-
-/* -------------------- Servers -------------------- */
-
-function addServer(url = "") {
-    const container = document.getElementById("servers-container");
+function addExampleBlock(container, data = {}, typeLabel = "Example") {
     if (!container) return;
 
-    const div = document.createElement("div");
-    div.className = "server-block";
-    div.innerHTML = `
-        <label>Server URL</label>
-        <input type="text" class="server-url" value="${escapeHtml(url)}" placeholder="https://api.example.com">
-        <button class="small-btn" type="button" onclick="this.parentElement.remove(); triggerGenerateIfAllowed();">Remove</button>
+    const index = container.querySelectorAll(".example-block").length + 1;
+
+    const block = document.createElement("div");
+    block.className = "example-block";
+    block.innerHTML = `
+        <div class="mini-card-header" onclick="toggleMiniCard(this)">
+            <div class="mini-card-title">${escapeHtml(data.key || `${typeLabel} ${index}`)}</div>
+            <span class="collapse-icon">▼</span>
+        </div>
+        <div class="mini-card-body">
+            <div class="inline-row">
+                <div>
+                    <label>Example Key</label>
+                    <input type="text" class="example-key" value="${escapeHtml(data.key || "")}" placeholder="basicExample">
+                </div>
+                <div>
+                    <label>Summary</label>
+                    <input type="text" class="example-summary" value="${escapeHtml(data.summary || "")}" placeholder="Example summary">
+                </div>
+            </div>
+
+            <label>Example JSON</label>
+            <textarea class="example-value" placeholder='{"name":"John"}'>${escapeHtml(data.value || "")}</textarea>
+            <button type="button" class="small-btn remove-example-btn">Remove Example</button>
+        </div>
     `;
-    container.appendChild(div);
+
+    container.appendChild(block);
+
+    const keyInput = block.querySelector(".example-key");
+    const title = block.querySelector(".mini-card-title");
+
+    keyInput.addEventListener("input", () => {
+        title.textContent = keyInput.value.trim() || `${typeLabel} ${index}`;
+    });
+
+    block.querySelector(".remove-example-btn").addEventListener("click", () => {
+        block.remove();
+        const pathBlock = container.closest(".path-card-body");
+        refreshExampleSelectors(pathBlock);
+        triggerGenerateIfAllowed();
+    });
 }
 
-/* -------------------- Headers -------------------- */
+function collectExamples(container) {
+    if (!container) return [];
+    return Array.from(container.querySelectorAll(".example-block")).map(block => ({
+        key: block.querySelector(".example-key")?.value || "",
+        summary: block.querySelector(".example-summary")?.value || "",
+        value: block.querySelector(".example-value")?.value || ""
+    }));
+}
 
-function addHeader(pathBlock, headerData = {}) {
-    const headersContainer = pathBlock.querySelector(".headers-container");
-    if (!headersContainer) return;
+function refreshExampleSelectors(pathBlock) {
+    if (!pathBlock) return;
 
-    const div = document.createElement("div");
-    div.className = "header-block";
+    const reqExamples = collectExamples(pathBlock.querySelector(".request-examples-container"));
+    const resExamples = collectExamples(pathBlock.querySelector(".response-examples-container"));
 
-    div.innerHTML = `
-        <div class="inline-row">
-            <div>
-                <label>Header Name</label>
-                <input type="text" class="header-name" value="${escapeHtml(headerData.name || "")}" placeholder="X-Request-ID">
-            </div>
-            <div>
-                <label>Type</label>
-                <select class="header-type">
-                    <option value="string" ${(headerData.type || "") === "string" ? "selected" : ""}>string</option>
-                    <option value="integer" ${(headerData.type || "") === "integer" ? "selected" : ""}>integer</option>
-                    <option value="number" ${(headerData.type || "") === "number" ? "selected" : ""}>number</option>
-                    <option value="boolean" ${(headerData.type || "") === "boolean" ? "selected" : ""}>boolean</option>
-                    <option value="object" ${(headerData.type || "") === "object" ? "selected" : ""}>object</option>
-                    <option value="array" ${(headerData.type || "") === "array" ? "selected" : ""}>array</option>
-                </select>
-            </div>
-            <div>
-                <label>Required</label>
-                <select class="header-required">
-                    <option value="false" ${headerData.required ? "" : "selected"}>No</option>
-                    <option value="true" ${headerData.required ? "selected" : ""}>Yes</option>
-                </select>
-            </div>
-        </div>
+    const reqSelect = pathBlock.querySelector(".request-example-select");
+    const resSelect = pathBlock.querySelector(".response-example-select");
 
-        <label>Header Description</label>
-        <input type="text" class="header-description" value="${escapeHtml(headerData.description || "")}" placeholder="Header description">
+    if (reqSelect) {
+        const current = reqSelect.value;
+        reqSelect.innerHTML = `<option value="">Select Request Example</option>` +
+            reqExamples.map((ex, i) =>
+                `<option value="${i}">${escapeHtml(ex.key || `requestExample${i + 1}`)}</option>`
+            ).join("");
+        if (current && reqExamples[Number(current)]) reqSelect.value = current;
+    }
 
-        <label>Header Example</label>
-        <input type="text" class="header-example" value="${escapeHtml(headerData.example || "")}" placeholder="abc-123">
-
-        <button class="small-btn" type="button" onclick="this.parentElement.remove(); triggerGenerateIfAllowed();">Remove Header</button>
-    `;
-
-    headersContainer.appendChild(div);
+    if (resSelect) {
+        const current = resSelect.value;
+        resSelect.innerHTML = `<option value="">Select Response Example</option>` +
+            resExamples.map((ex, i) =>
+                `<option value="${i}">${escapeHtml(ex.key || `responseExample${i + 1}`)}</option>`
+            ).join("");
+        if (current && resExamples[Number(current)]) resSelect.value = current;
+    }
 }
 
 /* -------------------- Schema Builder -------------------- */
@@ -814,7 +807,8 @@ function visualArrayChildrenToArrayItems(children) {
 }
 
 function openApiSchemaToVisualFields(schema) {
-    if (!schema || schema.type !== "object") return [];
+    if (!schema) return [];
+    if (schema.type !== "object") return [];
     const props = schema.properties || {};
     const requiredList = schema.required || [];
 
@@ -887,6 +881,221 @@ function openApiPropertyToVisualField(name, propSchema, isRequired) {
     };
 }
 
+/* -------------------- Variant Helpers -------------------- */
+
+function addSchemaVariant(container, builderClass, data = {}, label = "Variant") {
+    if (!container) return;
+
+    const index = container.querySelectorAll(".schema-variant-card").length + 1;
+
+    const card = document.createElement("div");
+    card.className = "schema-variant-card";
+    card.innerHTML = `
+        <div class="mini-card-header" onclick="toggleMiniCard(this)">
+            <div class="mini-card-title">${escapeHtml(data.name || `${label} ${index}`)}</div>
+            <span class="collapse-icon">▼</span>
+        </div>
+        <div class="mini-card-body">
+            <div class="inline-row">
+                <div>
+                    <label>Variant Name</label>
+                    <input type="text" class="schema-variant-name" value="${escapeHtml(data.name || "")}" placeholder="variant${index}">
+                </div>
+                <div>
+                    <label>&nbsp;</label>
+                    <button type="button" class="small-btn remove-schema-variant-btn">Remove Variant</button>
+                </div>
+            </div>
+            <div class="${builderClass}"></div>
+        </div>
+    `;
+
+    container.appendChild(card);
+
+    const nameInput = card.querySelector(".schema-variant-name");
+    const title = card.querySelector(".mini-card-title");
+
+    nameInput.addEventListener("input", () => {
+        title.textContent = nameInput.value.trim() || `${label} ${index}`;
+    });
+
+    createSchemaBuilder(card.querySelector(`.${builderClass}`), data.fields || []);
+
+    card.querySelector(".remove-schema-variant-btn").addEventListener("click", () => {
+        card.remove();
+        triggerGenerateIfAllowed();
+    });
+}
+
+function collectSchemaVariants(container, builderClass, mode) {
+    if (!container) return [];
+
+    const cards = Array.from(container.querySelectorAll(".schema-variant-card"));
+    const selectedCards = mode === "single" ? cards.slice(0, 1) : cards;
+
+    return selectedCards.map((card, idx) => ({
+        name: card.querySelector(".schema-variant-name")?.value.trim() || `variant${idx + 1}`,
+        fields: collectSchemaFields(card.querySelector(`.${builderClass} .root-schema-props`))
+    }));
+}
+
+function ensureSchemaVariantExists(pathBlock, kind) {
+    const variantsContainer = pathBlock.querySelector(`.${kind}-schema-variants`);
+    const mode = pathBlock.querySelector(`.${kind}-schema-mode`)?.value || "single";
+
+    if (!variantsContainer) return;
+
+    const existing = variantsContainer.querySelectorAll(".schema-variant-card");
+    if (existing.length === 0) {
+        addSchemaVariant(
+            variantsContainer,
+            `${kind}-schema-builder`,
+            {},
+            kind === "request" ? "Request Variant" : "Response Variant"
+        );
+    }
+
+    const cards = variantsContainer.querySelectorAll(".schema-variant-card");
+    cards.forEach((card, idx) => {
+        card.style.display = mode === "single" ? (idx === 0 ? "block" : "none") : "block";
+    });
+}
+
+function getSelectedVariantCard(pathBlock, kind) {
+    const select = pathBlock.querySelector(`.${kind}-schema-variant-select`);
+    const container = pathBlock.querySelector(`.${kind}-schema-variants`);
+    if (!container) return null;
+
+    const cards = Array.from(container.querySelectorAll(".schema-variant-card"));
+    if (!cards.length) return null;
+
+    const idx = select && select.value !== "" ? Number(select.value) : 0;
+    return cards[idx] || cards[0];
+}
+
+function refreshVariantSelectors(pathBlock) {
+    ["request", "response"].forEach(kind => {
+        const select = pathBlock.querySelector(`.${kind}-schema-variant-select`);
+        const container = pathBlock.querySelector(`.${kind}-schema-variants`);
+        if (!select || !container) return;
+
+        const current = select.value;
+        const cards = Array.from(container.querySelectorAll(".schema-variant-card"));
+        select.innerHTML = `<option value="">Select ${kind} schema variant</option>` +
+            cards.map((card, i) => {
+                const name = card.querySelector(".schema-variant-name")?.value.trim() || `${kind}Variant${i + 1}`;
+                return `<option value="${i}">${escapeHtml(name)}</option>`;
+            }).join("");
+
+        if (current && cards[Number(current)]) {
+            select.value = current;
+        }
+    });
+}
+
+function buildSchemaFromSelectedExample(pathBlock, kind) {
+    const exampleSelect = pathBlock.querySelector(`.${kind}-example-select`);
+    if (!exampleSelect || exampleSelect.value === "") {
+        alert(`Please select a ${kind} example first.`);
+        return;
+    }
+
+    const examples = collectExamples(pathBlock.querySelector(`.${kind}-examples-container`));
+    const selectedExample = examples[Number(exampleSelect.value)];
+
+    if (!selectedExample || !selectedExample.value.trim()) {
+        alert(`Selected ${kind} example is empty.`);
+        return;
+    }
+
+    ensureSchemaVariantExists(pathBlock, kind);
+    const variantCard = getSelectedVariantCard(pathBlock, kind);
+
+    if (!variantCard) {
+        alert(`No ${kind} schema variant found.`);
+        return;
+    }
+
+    try {
+        const exampleObj = JSON.parse(selectedExample.value);
+        const schema = inferSchemaFromExample(exampleObj);
+        const visualFields = openApiSchemaToVisualFields(schema);
+
+        createSchemaBuilder(
+            variantCard.querySelector(`.${kind}-schema-builder`),
+            visualFields
+        );
+
+        triggerGenerateIfAllowed();
+    } catch (e) {
+        console.error(e);
+        alert(`Invalid selected ${kind} example JSON.`);
+    }
+}
+
+/* -------------------- Servers -------------------- */
+
+function addServer(url = "") {
+    const container = document.getElementById("servers-container");
+    if (!container) return;
+
+    const div = document.createElement("div");
+    div.className = "server-block";
+    div.innerHTML = `
+        <label>Server URL</label>
+        <input type="text" class="server-url" value="${escapeHtml(url)}" placeholder="https://api.example.com">
+        <button class="small-btn" type="button" onclick="this.parentElement.remove(); triggerGenerateIfAllowed();">Remove</button>
+    `;
+    container.appendChild(div);
+}
+
+/* -------------------- Headers -------------------- */
+
+function addHeader(pathBlock, headerData = {}) {
+    const headersContainer = pathBlock.querySelector(".headers-container");
+    if (!headersContainer) return;
+
+    const div = document.createElement("div");
+    div.className = "header-block";
+
+    div.innerHTML = `
+        <div class="inline-row">
+            <div>
+                <label>Header Name</label>
+                <input type="text" class="header-name" value="${escapeHtml(headerData.name || "")}" placeholder="X-Request-ID">
+            </div>
+            <div>
+                <label>Type</label>
+                <select class="header-type">
+                    <option value="string" ${(headerData.type || "") === "string" ? "selected" : ""}>string</option>
+                    <option value="integer" ${(headerData.type || "") === "integer" ? "selected" : ""}>integer</option>
+                    <option value="number" ${(headerData.type || "") === "number" ? "selected" : ""}>number</option>
+                    <option value="boolean" ${(headerData.type || "") === "boolean" ? "selected" : ""}>boolean</option>
+                    <option value="object" ${(headerData.type || "") === "object" ? "selected" : ""}>object</option>
+                    <option value="array" ${(headerData.type || "") === "array" ? "selected" : ""}>array</option>
+                </select>
+            </div>
+            <div>
+                <label>Required</label>
+                <select class="header-required">
+                    <option value="false" ${headerData.required ? "" : "selected"}>No</option>
+                    <option value="true" ${headerData.required ? "selected" : ""}>Yes</option>
+                </select>
+            </div>
+        </div>
+
+        <label>Header Description</label>
+        <input type="text" class="header-description" value="${escapeHtml(headerData.description || "")}" placeholder="Header description">
+
+        <label>Header Example</label>
+        <input type="text" class="header-example" value="${escapeHtml(headerData.example || "")}" placeholder="abc-123">
+
+        <button class="small-btn" type="button" onclick="this.parentElement.remove(); triggerGenerateIfAllowed();">Remove Header</button>
+    `;
+
+    headersContainer.appendChild(div);
+}
+
 /* -------------------- Path Builder -------------------- */
 
 function addCollapsibleSubsection(title, contentHtml, open = true) {
@@ -924,25 +1133,87 @@ function addPath(pathData = {}) {
     `;
 
     const requestSchemaHtml = `
-        <div class="inline-actions">
-            <button type="button" class="success-btn build-request-schema-btn">Build Schema From Request Example</button>
+        <div class="inline-row">
+            <div>
+                <label>Schema Mode</label>
+                <select class="request-schema-mode">
+                    <option value="single" ${(pathData.request_schema_mode || "single") === "single" ? "selected" : ""}>single</option>
+                    <option value="oneOf" ${pathData.request_schema_mode === "oneOf" ? "selected" : ""}>oneOf</option>
+                    <option value="anyOf" ${pathData.request_schema_mode === "anyOf" ? "selected" : ""}>anyOf</option>
+                    <option value="allOf" ${pathData.request_schema_mode === "allOf" ? "selected" : ""}>allOf</option>
+                </select>
+            </div>
+            <div>
+                <label>Use Request Example</label>
+                <select class="request-example-select">
+                    <option value="">Select Request Example</option>
+                </select>
+            </div>
         </div>
-        <div class="request-schema-builder"></div>
+
+        <div class="inline-row">
+            <div>
+                <label>Target Variant</label>
+                <select class="request-schema-variant-select">
+                    <option value="">Select request schema variant</option>
+                </select>
+            </div>
+            <div></div>
+        </div>
+
+        <div class="inline-actions">
+            <button type="button" class="success-btn build-request-schema-btn">Build Schema From Selected Request Example</button>
+            <button type="button" class="success-btn add-request-schema-variant-btn">+ Add Request Schema Variant</button>
+        </div>
+
+        <div class="request-schema-variants"></div>
     `;
 
-    const requestExampleHtml = `
-        <textarea class="path-request-example" placeholder='{"name":"John"}'>${escapeHtml(pathData.request_example || "")}</textarea>
+    const requestExamplesHtml = `
+        <div class="request-examples-container"></div>
+        <button type="button" class="success-btn add-request-example-btn">+ Add Request Example</button>
     `;
 
     const responseSchemaHtml = `
-        <div class="inline-actions">
-            <button type="button" class="success-btn build-response-schema-btn">Build Schema From Response Example</button>
+        <div class="inline-row">
+            <div>
+                <label>Schema Mode</label>
+                <select class="response-schema-mode">
+                    <option value="single" ${(pathData.response_schema_mode || "single") === "single" ? "selected" : ""}>single</option>
+                    <option value="oneOf" ${pathData.response_schema_mode === "oneOf" ? "selected" : ""}>oneOf</option>
+                    <option value="anyOf" ${pathData.response_schema_mode === "anyOf" ? "selected" : ""}>anyOf</option>
+                    <option value="allOf" ${pathData.response_schema_mode === "allOf" ? "selected" : ""}>allOf</option>
+                </select>
+            </div>
+            <div>
+                <label>Use Response Example</label>
+                <select class="response-example-select">
+                    <option value="">Select Response Example</option>
+                </select>
+            </div>
         </div>
-        <div class="response-schema-builder"></div>
+
+        <div class="inline-row">
+            <div>
+                <label>Target Variant</label>
+                <select class="response-schema-variant-select">
+                    <option value="">Select response schema variant</option>
+                </select>
+            </div>
+            <div></div>
+        </div>
+
+        <div class="inline-actions">
+            <button type="button" class="success-btn build-response-schema-btn">Build Schema From Selected Response Example</button>
+            <button type="button" class="success-btn add-response-schema-variant-btn">+ Add Response Schema Variant</button>
+        </div>
+
+        <div class="response-schema-variants"></div>
     `;
 
-    const responseExampleHtml = `
-        <textarea class="path-response-example" placeholder='{"id":1,"name":"John"}'>${escapeHtml(pathData.response_example || "")}</textarea>
+    const responseExamplesHtml = `
+        <div class="response-examples-container"></div>
+        <button type="button" class="success-btn add-response-example-btn">+ Add Response Example</button>
     `;
 
     card.innerHTML = `
@@ -979,10 +1250,10 @@ function addPath(pathData = {}) {
             <textarea class="path-description" placeholder="Describe this endpoint">${escapeHtml(pathData.description || "")}</textarea>
 
             ${addCollapsibleSubsection("Request Headers", headersHtml, false)}
-            ${addCollapsibleSubsection("Request Schema", requestSchemaHtml, true)}
-            ${addCollapsibleSubsection("Request Example", requestExampleHtml, false)}
-            ${addCollapsibleSubsection("Response Schema", responseSchemaHtml, true)}
-            ${addCollapsibleSubsection("Response Example", responseExampleHtml, false)}
+            ${addCollapsibleSubsection("Request Schemas", requestSchemaHtml, true)}
+            ${addCollapsibleSubsection("Request Examples", requestExamplesHtml, false)}
+            ${addCollapsibleSubsection("Response Schemas", responseSchemaHtml, true)}
+            ${addCollapsibleSubsection("Response Examples", responseExamplesHtml, false)}
 
             <button class="small-btn" type="button" onclick="this.closest('.path-card').remove(); triggerGenerateIfAllowed();">Remove Path</button>
         </div>
@@ -997,20 +1268,74 @@ function addPath(pathData = {}) {
         triggerGenerateIfAllowed();
     });
 
+    body.querySelector(".add-request-example-btn").addEventListener("click", () => {
+        addExampleBlock(body.querySelector(".request-examples-container"), {}, "Request Example");
+        refreshExampleSelectors(body);
+        triggerGenerateIfAllowed();
+    });
+
+    body.querySelector(".add-response-example-btn").addEventListener("click", () => {
+        addExampleBlock(body.querySelector(".response-examples-container"), {}, "Response Example");
+        refreshExampleSelectors(body);
+        triggerGenerateIfAllowed();
+    });
+
+    body.querySelector(".add-request-schema-variant-btn").addEventListener("click", () => {
+        addSchemaVariant(body.querySelector(".request-schema-variants"), "request-schema-builder", {}, "Request Variant");
+        ensureSchemaVariantExists(body, "request");
+        refreshVariantSelectors(body);
+        triggerGenerateIfAllowed();
+    });
+
+    body.querySelector(".add-response-schema-variant-btn").addEventListener("click", () => {
+        addSchemaVariant(body.querySelector(".response-schema-variants"), "response-schema-builder", {}, "Response Variant");
+        ensureSchemaVariantExists(body, "response");
+        refreshVariantSelectors(body);
+        triggerGenerateIfAllowed();
+    });
+
     body.querySelector(".build-request-schema-btn").addEventListener("click", () => {
-        buildRequestSchemaFromExample(body);
+        buildSchemaFromSelectedExample(body, "request");
     });
 
     body.querySelector(".build-response-schema-btn").addEventListener("click", () => {
-        buildResponseSchemaFromExample(body);
+        buildSchemaFromSelectedExample(body, "response");
+    });
+
+    body.querySelector(".request-schema-mode").addEventListener("change", () => {
+        ensureSchemaVariantExists(body, "request");
+        refreshVariantSelectors(body);
+        triggerGenerateIfAllowed();
+    });
+
+    body.querySelector(".response-schema-mode").addEventListener("change", () => {
+        ensureSchemaVariantExists(body, "response");
+        refreshVariantSelectors(body);
+        triggerGenerateIfAllowed();
     });
 
     if (Array.isArray(pathData.headers) && pathData.headers.length > 0) {
         pathData.headers.forEach(header => addHeader(body, header));
     }
 
-    createSchemaBuilder(body.querySelector(".request-schema-builder"), pathData.request_schema_fields || []);
-    createSchemaBuilder(body.querySelector(".response-schema-builder"), pathData.response_schema_fields || []);
+    const reqVariants = (pathData.request_schema_variants && pathData.request_schema_variants.length)
+        ? pathData.request_schema_variants
+        : [{ name: "requestVariant1", fields: pathData.request_schema_fields || [] }];
+
+    const resVariants = (pathData.response_schema_variants && pathData.response_schema_variants.length)
+        ? pathData.response_schema_variants
+        : [{ name: "responseVariant1", fields: pathData.response_schema_fields || [] }];
+
+    reqVariants.forEach(v => addSchemaVariant(body.querySelector(".request-schema-variants"), "request-schema-builder", v, "Request Variant"));
+    resVariants.forEach(v => addSchemaVariant(body.querySelector(".response-schema-variants"), "response-schema-builder", v, "Response Variant"));
+
+    (pathData.request_examples || []).forEach(ex => addExampleBlock(body.querySelector(".request-examples-container"), ex, "Request Example"));
+    (pathData.response_examples || []).forEach(ex => addExampleBlock(body.querySelector(".response-examples-container"), ex, "Response Example"));
+
+    ensureSchemaVariantExists(body, "request");
+    ensureSchemaVariantExists(body, "response");
+    refreshExampleSelectors(body);
+    refreshVariantSelectors(body);
 }
 
 /* -------------------- Collect Form -------------------- */
@@ -1029,12 +1354,8 @@ function collectFormData() {
             example: headerBlock.querySelector(".header-example").value
         }));
 
-        const requestSchemaFields = collectSchemaFields(
-            block.querySelector(".request-schema-builder .root-schema-props")
-        );
-        const responseSchemaFields = collectSchemaFields(
-            block.querySelector(".response-schema-builder .root-schema-props")
-        );
+        const requestSchemaMode = block.querySelector(".request-schema-mode")?.value || "single";
+        const responseSchemaMode = block.querySelector(".response-schema-mode")?.value || "single";
 
         return {
             url: block.querySelector(".path-url").value,
@@ -1042,10 +1363,20 @@ function collectFormData() {
             summary: block.querySelector(".path-summary").value,
             description: block.querySelector(".path-description").value,
             headers,
-            request_schema_obj: requestSchemaFields.length ? visualFieldsToOpenApiSchema(requestSchemaFields) : null,
-            request_example: block.querySelector(".path-request-example").value,
-            response_schema_obj: responseSchemaFields.length ? visualFieldsToOpenApiSchema(responseSchemaFields) : null,
-            response_example: block.querySelector(".path-response-example").value
+            request_schema_mode: requestSchemaMode,
+            request_schema_variants: collectSchemaVariants(
+                block.querySelector(".request-schema-variants"),
+                "request-schema-builder",
+                requestSchemaMode
+            ),
+            request_examples: collectExamples(block.querySelector(".request-examples-container")),
+            response_schema_mode: responseSchemaMode,
+            response_schema_variants: collectSchemaVariants(
+                block.querySelector(".response-schema-variants"),
+                "response-schema-builder",
+                responseSchemaMode
+            ),
+            response_examples: collectExamples(block.querySelector(".response-examples-container"))
         };
     });
 
@@ -1130,6 +1461,62 @@ async function updatePreviewFromYaml() {
 
 /* -------------------- Reverse Sync -------------------- */
 
+function schemaObjectToVariants(schemaObj, prefix) {
+    if (!schemaObj) {
+        return {
+            mode: "single",
+            variants: [{ name: `${prefix}Variant1`, fields: [] }]
+        };
+    }
+
+    if (schemaObj.oneOf) {
+        return {
+            mode: "oneOf",
+            variants: schemaObj.oneOf.map((s, i) => ({
+                name: `${prefix}Variant${i + 1}`,
+                fields: openApiSchemaToVisualFields(s)
+            }))
+        };
+    }
+
+    if (schemaObj.anyOf) {
+        return {
+            mode: "anyOf",
+            variants: schemaObj.anyOf.map((s, i) => ({
+                name: `${prefix}Variant${i + 1}`,
+                fields: openApiSchemaToVisualFields(s)
+            }))
+        };
+    }
+
+    if (schemaObj.allOf) {
+        return {
+            mode: "allOf",
+            variants: schemaObj.allOf.map((s, i) => ({
+                name: `${prefix}Variant${i + 1}`,
+                fields: openApiSchemaToVisualFields(s)
+            }))
+        };
+    }
+
+    return {
+        mode: "single",
+        variants: [{
+            name: `${prefix}Variant1`,
+            fields: openApiSchemaToVisualFields(schemaObj)
+        }]
+    };
+}
+
+function examplesObjectToList(examplesObj, prefix) {
+    if (!examplesObj) return [];
+    return Object.keys(examplesObj).map((key, i) => ({
+        key: key || `${prefix}${i + 1}`,
+        summary: examplesObj[key]?.summary || "",
+        value: prettyJson(examplesObj[key]?.value)
+    }));
+}
+
 function updatePathCardHeaders() {
     document.querySelectorAll(".path-card").forEach(card => {
         const method = card.querySelector(".path-method")?.value || "get";
@@ -1176,18 +1563,18 @@ function populateFormFromSpec(spec) {
             const operation = methodsObj[method] || {};
 
             const requestMedia = operation?.requestBody?.content?.["application/json"] || {};
-            const requestSchema = requestMedia.schema || null;
-            const requestExample = prettyJson(requestMedia.example);
+            const requestSchemaInfo = schemaObjectToVariants(requestMedia.schema || null, "request");
+            const requestExamples = examplesObjectToList(requestMedia.examples || null, "requestExample");
 
             const responses = operation?.responses || {};
             const firstResponseCode = Object.keys(responses)[0];
-            let responseSchema = null;
-            let responseExample = "";
+            let responseSchemaInfo = { mode: "single", variants: [{ name: "responseVariant1", fields: [] }] };
+            let responseExamples = [];
 
             if (firstResponseCode) {
                 const responseMedia = responses[firstResponseCode]?.content?.["application/json"] || {};
-                responseSchema = responseMedia.schema || null;
-                responseExample = prettyJson(responseMedia.example);
+                responseSchemaInfo = schemaObjectToVariants(responseMedia.schema || null, "response");
+                responseExamples = examplesObjectToList(responseMedia.examples || null, "responseExample");
             }
 
             const headers = (operation.parameters || [])
@@ -1206,10 +1593,12 @@ function populateFormFromSpec(spec) {
                 summary: operation.summary || "",
                 description: operation.description || "",
                 headers,
-                request_schema_fields: openApiSchemaToVisualFields(requestSchema),
-                request_example: requestExample,
-                response_schema_fields: openApiSchemaToVisualFields(responseSchema),
-                response_example: responseExample
+                request_schema_mode: requestSchemaInfo.mode,
+                request_schema_variants: requestSchemaInfo.variants,
+                request_examples: requestExamples,
+                response_schema_mode: responseSchemaInfo.mode,
+                response_schema_variants: responseSchemaInfo.variants,
+                response_examples: responseExamples
             });
 
             pathCount++;
@@ -1382,13 +1771,20 @@ function setupAutoPreview() {
             target.classList.contains("path-url") ||
             target.classList.contains("path-summary") ||
             target.classList.contains("path-description") ||
-            target.classList.contains("path-request-example") ||
-            target.classList.contains("path-response-example") ||
             target.classList.contains("header-name") ||
             target.classList.contains("header-description") ||
             target.classList.contains("header-example") ||
-            target.classList.contains("schema-name")
+            target.classList.contains("schema-name") ||
+            target.classList.contains("schema-variant-name") ||
+            target.classList.contains("example-key") ||
+            target.classList.contains("example-summary") ||
+            target.classList.contains("example-value")
         ) {
+            const pathBlock = target.closest(".path-card-body");
+            if (pathBlock) {
+                refreshExampleSelectors(pathBlock);
+                refreshVariantSelectors(pathBlock);
+            }
             triggerGenerateIfAllowed();
             updatePathCardHeaders();
         }
@@ -1407,8 +1803,16 @@ function setupAutoPreview() {
             target.classList.contains("header-required") ||
             target.classList.contains("schema-type") ||
             target.classList.contains("schema-array-item-type") ||
-            target.classList.contains("schema-required")
+            target.classList.contains("schema-required") ||
+            target.classList.contains("request-schema-mode") ||
+            target.classList.contains("response-schema-mode")
         ) {
+            const pathBlock = target.closest(".path-card-body");
+            if (pathBlock) {
+                ensureSchemaVariantExists(pathBlock, "request");
+                ensureSchemaVariantExists(pathBlock, "response");
+                refreshVariantSelectors(pathBlock);
+            }
             triggerGenerateIfAllowed();
             updatePathCardHeaders();
         }
@@ -1456,22 +1860,55 @@ window.onload = async function () {
                 example: "abc-123"
             }
         ],
-        request_schema_fields: [
-            { name: "name", type: "string", required: true },
-            { name: "email", type: "string", required: false }
+        request_schema_mode: "single",
+        request_schema_variants: [
+            {
+                name: "requestVariant1",
+                fields: [
+                    { name: "name", type: "string", required: true },
+                    { name: "email", type: "string", required: false }
+                ]
+            }
         ],
-        request_example: `{
+        request_examples: [
+            {
+                key: "basicUser",
+                summary: "Basic user",
+                value: `{
   "name": "John",
   "email": "john@example.com"
-}`,
-        response_schema_fields: [
-            { name: "id", type: "integer", required: true },
-            { name: "name", type: "string", required: true }
+}`
+            },
+            {
+                key: "adminUser",
+                summary: "Admin user",
+                value: `{
+  "name": "Alice",
+  "email": "alice@example.com",
+  "role": "admin"
+}`
+            }
         ],
-        response_example: `{
+        response_schema_mode: "single",
+        response_schema_variants: [
+            {
+                name: "responseVariant1",
+                fields: [
+                    { name: "id", type: "integer", required: true },
+                    { name: "name", type: "string", required: true }
+                ]
+            }
+        ],
+        response_examples: [
+            {
+                key: "successBasic",
+                summary: "Success response",
+                value: `{
   "id": 1,
   "name": "John"
 }`
+            }
+        ]
     });
 
     initMonacoEditor(window.INITIAL_YAML || "");
