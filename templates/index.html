@@ -13,7 +13,7 @@
         <aside class="spec-browser" id="spec-browser">
             <div class="spec-browser-header">
                 <div>
-                    <div class="brand-title">Neo Swagger Studio</div>
+                    <div class="brand-title">Swagger Studio</div>
                     <div class="brand-subtitle">Search and manage stored specs</div>
                 </div>
             </div>
@@ -113,13 +113,12 @@
                 <div class="splitter" id="splitter-left"></div>
 
                 <section class="panel middle-panel" id="middle-panel">
-    <div class="editor-header">
-        <h3>OpenAPI Editor</h3>
-        <div class="editor-meta" id="editor-mode-label">Viewing: YAML</div>
-    </div>
-    <div id="yaml-editor" class="monaco-editor-container"></div>
-</section>
-
+                    <div class="editor-header">
+                        <h3>OpenAPI Editor</h3>
+                        <div class="editor-meta" id="editor-mode-label">Viewing: YAML</div>
+                    </div>
+                    <div id="yaml-editor" class="monaco-editor-container"></div>
+                </section>
 
                 <div class="splitter" id="splitter-right"></div>
 
@@ -137,9 +136,9 @@
         window.INITIAL_YAML = {{ initial_yaml|tojson }};
     </script>
 
-<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
-<script src="https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+    <script src="https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
     <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
