@@ -1,3 +1,11 @@
+# Use the generator file to generate the project files
+
+```
+python generate-swagger-studio-v9-2.py
+``
+
+Or Use the older version of the project
+
 # Install Dependencies
 
 ```
