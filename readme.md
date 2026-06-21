@@ -39,6 +39,7 @@ mkdir -p ~/projects/swagger-studio
 * Copy from windows to wsl directory
 ```
 cp -r /mnt/c/Karthick/VSCODE/KKAI/swagger-gui-editor-v9/* .
+cp -r /mnt/c/Karthick/VSCODE/KKAI/swagger-gui-editor-v11-2/* .
 ```
 
 * update the below line in the app.py file
